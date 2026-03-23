@@ -14,7 +14,7 @@ jobs:
       matrix:
         include:
           - platform: android
-            os: ubuntu-latest
+            os: ubuntu-22.04
           - platform: windows
             os: Windows-2022
             arch: amd64
@@ -31,7 +31,7 @@ jobs:
           #            os: windows-11-arm
           #            arch: arm64
           - platform: linux
-            os: ubuntu-24.04-arm
+            os: ubuntu-22.04-arm
             arch: arm64
 
     steps:
@@ -65,14 +65,14 @@ jobs:
             core/go.sum
 
       - name: Setup Flutter
-        if: ${{ !(startsWith(matrix.os, 'windows-11-arm') || startsWith(matrix.os, 'ubuntu-24.04-arm')) }}
+        if: ${{ !(startsWith(matrix.os, 'windows-11-arm') || startsWith(matrix.os, 'ubuntu-22.04-arm')) }}
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           flutter-version: 3.35.7
           cache: true
       - name: Setup Flutter With Other
-        if: startsWith(matrix.os, 'windows-11-arm') || startsWith(matrix.os, 'ubuntu-24.04-arm')
+        if: startsWith(matrix.os, 'windows-11-arm') || startsWith(matrix.os, 'ubuntu-22.04-arm')
         uses: subosito/flutter-action@v2
         with:
           channel: master
@@ -95,7 +95,7 @@ jobs:
           overwrite: true
 
   changelog:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [ build ]
     steps:
       - name: Checkout
@@ -152,7 +152,7 @@ jobs:
   upload:
     permissions: write-all
     needs: [ build ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     services:
       telegram-bot-api:
         image: aiogram/telegram-bot-api:latest
