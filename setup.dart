@@ -356,6 +356,12 @@ class BuildCommand extends Command {
       valueHelp: ['pre', 'stable'].join(','),
       help: 'The $name build env',
     );
+    if (target == Target.linux) {
+      argParser.addOption(
+        'targets',
+        help: 'Override the package targets (e.g. deb, appimage, rpm)',
+      );
+    }
   }
 
   @override
@@ -378,7 +384,7 @@ class BuildCommand extends Command {
     await envFile.writeAsString(json.encode(data));
   }
 
-  Future<void> _getLinuxDependencies(Arch arch) async {
+  Future<void> _getLinuxDependencies(Arch arch, String targets) async {
     await Build.exec(Build.getExecutable('sudo apt update -y'));
     await Build.exec(
       Build.getExecutable('sudo apt install -y ninja-build libgtk-3-dev'),
@@ -392,18 +398,21 @@ class BuildCommand extends Command {
     await Build.exec(Build.getExecutable('sudo apt install -y locate'));
     if (arch == Arch.amd64) {
       await Build.exec(Build.getExecutable('sudo apt install -y rpm patchelf'));
-      await Build.exec(Build.getExecutable('sudo apt install -y libfuse2'));
-
-      final downloadName = arch == Arch.amd64 ? 'x86_64' : 'aarch64';
-      await Build.exec(
-        Build.getExecutable(
-          'wget -O appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$downloadName.AppImage',
-        ),
-      );
-      await Build.exec(Build.getExecutable('chmod +x appimagetool'));
-      await Build.exec(
-        Build.getExecutable('sudo mv appimagetool /usr/local/bin/'),
-      );
+      if (targets.split(',').contains('appimage')) {
+        await Build.exec(Build.getExecutable('sudo apt install -y libfuse2'));
+        if (!File('/usr/local/bin/appimagetool').existsSync()) {
+          final downloadName = arch == Arch.amd64 ? 'x86_64' : 'aarch64';
+          await Build.exec(
+            Build.getExecutable(
+              'wget -O appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$downloadName.AppImage',
+            ),
+          );
+          await Build.exec(Build.getExecutable('chmod +x appimagetool'));
+          await Build.exec(
+            Build.getExecutable('sudo mv appimagetool /usr/local/bin/'),
+          );
+        }
+      }
     }
   }
 
@@ -479,13 +488,13 @@ class BuildCommand extends Command {
         return;
       case Target.linux:
         final targetMap = {Arch.arm64: 'linux-arm64', Arch.amd64: 'linux-x64'};
-        final targets = [
+        final targets = argResults?['targets'] ?? [
           'deb',
           if (arch == Arch.amd64) 'appimage',
           if (arch == Arch.amd64) 'rpm',
         ].join(',');
         final defaultTarget = targetMap[arch];
-        await _getLinuxDependencies(arch!);
+        await _getLinuxDependencies(arch!, targets);
         _buildDistributor(
           target: target,
           targets: targets,
